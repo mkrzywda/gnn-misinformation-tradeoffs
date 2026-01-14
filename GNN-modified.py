@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {device}")
 
-BASE_PATH = '/home/mkrzywda/GNN-CGP-FakeNEWS'
+BASE_PATH = '.'
 
 def binary_metrics_from_confusion(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred, labels=[0,1])
