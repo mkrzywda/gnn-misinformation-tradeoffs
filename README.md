@@ -1,2 +1,2 @@
 # gnns-misinformation
-Classic Graph Neural Networks are Strong Baselines: Reassessing GNNs for FakeNews Detection and Misinformation.
+Graph Neural Networks for Misinformation Detection: Performance–Efficiency Trade-offs
