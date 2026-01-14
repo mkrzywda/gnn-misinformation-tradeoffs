@@ -29,16 +29,13 @@ from sklearn.metrics import (
 )
 
 # ============================================================
-BASE_PATH = "/net/pr2/projects/plgrid/plggphdgnn/FAKENEWS"
+BASE_PATH = "."
 RESULTS_BASE = os.path.join(BASE_PATH, "final-results-baselines")
 os.makedirs(RESULTS_BASE, exist_ok=True)
 
 SEED = 42
 np.random.seed(SEED)
 
-# ============================================================
-# METRICS
-# ============================================================
 def binary_metrics_from_confusion(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     TN, FP, FN, TP = cm.ravel()
@@ -90,9 +87,7 @@ def calculate_metrics(y_true, y_pred, y_probs=None, multiclass=False):
         "NMI": normalized_mutual_info_score(y_true, y_pred),
     }
 
-# ============================================================
-# kNN FEATURE SMOOTHING (NEIGH)
-# ============================================================
+
 def knn_smooth_features(X, k):
     if k <= 0:
         return X
@@ -104,9 +99,7 @@ def knn_smooth_features(X, k):
         X_new[i] = X[ids[1:]].mean(axis=0)
     return X_new
 
-# ============================================================
-# MODELS
-# ============================================================
+
 def get_model(model_type):
     if model_type == "logreg":
         return LogisticRegression(max_iter=5000, n_jobs=-1, random_state=SEED)
@@ -122,18 +115,14 @@ def get_model(model_type):
         )
     raise ValueError(model_type)
 
-# ============================================================
-# DATA LOADING — 1:1 Z GNN
-# ============================================================
+
 def load_and_prepare_data(dataset_name, dataset_size=None):
     logger.info(f"Loading and preparing data for dataset: {dataset_name} (dataset_size={dataset_size})")
     path = os.path.join(BASE_PATH, dataset_name.lower())
     os.makedirs(path, exist_ok=True)
     name = dataset_name.lower()
 
-    # Unified-DF datasets
     if name in ['kaggle','fakenewsnet','welfake','click-id']:
-        # Load full DF
         if name=='kaggle':
             fake = pd.read_csv(os.path.join(path,'Fake.csv'))
             true = pd.read_csv(os.path.join(path,'True.csv'))
@@ -157,12 +146,10 @@ def load_and_prepare_data(dataset_name, dataset_size=None):
             df['label']=df['label'].map({'clickbait':1,'non-clickbait':0})
             text_col, lab_col = 'title','label'
 
-        # Original 70/20/10
         orig_trval, orig_test = train_test_split(df, test_size=0.1, random_state=42, stratify=df[lab_col])
         orig_train, orig_val  = train_test_split(orig_trval, test_size=0.2222, random_state=42, stratify=orig_trval[lab_col])
         logger.info(f"Original splits (100%) for {name}: train={len(orig_train)}, val={len(orig_val)}, test={len(orig_test)}")
 
-        # Stratified sample to dataset_size
         if dataset_size is not None:
             df, _ = train_test_split(df, train_size=dataset_size, random_state=42, stratify=df[lab_col])
             pct = int(dataset_size*100)
@@ -176,7 +163,6 @@ def load_and_prepare_data(dataset_name, dataset_size=None):
         logger.info(f"Cutted to {pct}% for {name}: train={len(train)}, val={len(val)}, test={len(test)}")
 
     else:
-        # Pre-split: liar, covid-19, mpid
         if name=='liar':
             cols = ["id","label","statement","subject","speaker","job","state","party",
                     "barely_true_counts","false_counts","half_true_counts","mostly_true_counts",
@@ -215,7 +201,6 @@ def load_and_prepare_data(dataset_name, dataset_size=None):
 
         logger.info(f"Cutted to {pct}% for {name}: train={len(train)}, val={len(val)}, test={len(test)}")
 
-    # TF-IDF vectorization
     vec = TfidfVectorizer(max_features=5000)
     vec.fit(pd.concat([train[text_col], val[text_col]], ignore_index=True))
     X_train, y_train = vec.transform(train[text_col]).toarray(), train[lab_col].values
@@ -227,18 +212,13 @@ def load_and_prepare_data(dataset_name, dataset_size=None):
             'validation': (X_val,   y_val),
             'test':       (X_test,  y_test)}
 
-# ============================================================
-# MAIN CV LOOP — 1:1 Z GNN
-# ============================================================
 def run_cross_validation(dataset_name, model_type, neigh, fraction):
-    # fraction -> dataset_size
     data = load_and_prepare_data(dataset_name, dataset_size=fraction)
 
     X_train_full, y_train_full = data['train']
     X_val_full,   y_val_full   = data['validation']
     X_test,       y_test       = data['test']
 
-    # Train + Val for CV (1:1 jak w GNN)
     X_all = np.vstack([X_train_full, X_val_full])
     y_all = np.concatenate([y_train_full, y_val_full])
 
@@ -257,7 +237,6 @@ def run_cross_validation(dataset_name, model_type, neigh, fraction):
         X_tr, y_tr = X_all[tr_idx], y_all[tr_idx]
         X_va, y_va = X_all[va_idx], y_all[va_idx]
 
-        # neigh smoothing
         X_tr = knn_smooth_features(X_tr, neigh)
         X_va = knn_smooth_features(X_va, neigh)
         X_te = knn_smooth_features(X_test, neigh)
@@ -271,12 +250,10 @@ def run_cross_validation(dataset_name, model_type, neigh, fraction):
         pipe.fit(X_tr, y_tr)
         inference_time = (time.time() - start) / len(y_test)
 
-        # Probabilities
         y_tr_p = pipe.predict_proba(X_tr)
         y_va_p = pipe.predict_proba(X_va)
         y_te_p = pipe.predict_proba(X_te)
 
-        # Losses (jak w baseline’ach)
         train_losses.append(log_loss(y_tr, y_tr_p))
         val_losses.append(log_loss(y_va, y_va_p))
         test_losses.append(log_loss(y_test, y_te_p))
@@ -295,9 +272,6 @@ def run_cross_validation(dataset_name, model_type, neigh, fraction):
         test_aucrocs.append(m['aucroc'])
         test_aucprs.append(m['aucpr'])
 
-    # ============================
-    # PLOTS (fold-wise)
-    # ============================
     folds = range(1, len(train_losses) + 1)
 
     def plot(vals, name):
@@ -318,18 +292,8 @@ def run_cross_validation(dataset_name, model_type, neigh, fraction):
     plot(test_aucrocs, "Test_AUCROC")
     plot(test_aucprs,  "Test_AUCPR")
 
-    # ============================
-    # SAVE CSV
-    # ============================
+
     df = pd.DataFrame(metrics_results)
-
-    #mean_row = df.mean(numeric_only=True)
-    #std_row  = df.std(numeric_only=True)
-
-    #mean_row['Fold'] = 'Mean'
-    #std_row['Fold']  = 'Std'
-
-    #df = pd.concat([df, pd.DataFrame([mean_row, std_row])], ignore_index=True)
 
     mean_dict = df.mean(numeric_only=True).to_dict()
     std_dict  = df.std(numeric_only=True).to_dict()
@@ -351,9 +315,6 @@ def run_cross_validation(dataset_name, model_type, neigh, fraction):
 
     logger.info(f"Saved results to {out_csv}")
 
-
-
-# ============================================================
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
