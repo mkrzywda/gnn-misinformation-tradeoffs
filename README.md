@@ -4,7 +4,7 @@ This repository accompanies [The International Conference on Computational Scien
 
 - **“Graph Neural Networks for Misinformation Detection: Performance–Efficiency Trade-offs”** by *Soveatin Kuntur, Maciej Krzywda, Anna Wróblewska, Marcin Paprzycki, Maria Ganzha, Szymon Łukasik, Amir H. Gandomi* 
 
-**Paper is available** [...](...)
+**Paper is available** [Arxiv](https://arxiv.org/pdf/2604.08131)
 
 It explores the use of **classic Graph Neural Networks (GNNs)** for misinformation detection, focusing on the trade-off between **predictive performance and computational efficiency**.
 
@@ -50,3 +50,20 @@ To answer these questions, we conduct a **large-scale multilingual benchmarking 
   * optional lightweight pretraining
 
 Rather than proposing new architectures, the goal is to **systematically evaluate when and why classic GNNs work**.
+
+
+---
+
+## Citation
+
+```latex
+@misc{kuntur2026graphneuralnetworksmisinformation,
+      title={Graph Neural Networks for Misinformation Detection: Performance-Efficiency Trade-offs}, 
+      author={Soveatin Kuntur and Maciej Krzywda and Anna Wróblewska and Marcin Paprzycki and Maria Ganzha and Szymon Łukasik and Amir H. Gandomi},
+      year={2026},
+      eprint={2604.08131},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2604.08131}, 
+}
+```
